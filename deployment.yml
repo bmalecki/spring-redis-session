@@ -1,0 +1,66 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-redis
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: spring-redis
+  template:
+    metadata:
+      labels:
+        app: spring-redis
+    spec:
+      containers:
+        - image: cogmshack.azurecr.io/spring-redis:latest
+          imagePullPolicy: Always
+          name: spring-redis
+          env:
+          - name: "SPRING_REDIS_PORT"
+            value: "6379"
+          - name: "REDIS_URL"
+            value: $REDIS_URL
+          - name: "REDIS_PASS"
+            value: $REDIS_PASS
+          resources:
+            requests:
+              cpu: 500m
+              memory: 128Mi
+            limits:
+              cpu: 2000m
+              memory: 1024Mi
+          ports:
+            - containerPort: 8080
+              name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-redis
+spec:
+  type: ClusterIP
+  selector:
+    app: spring-redis
+  ports:
+    - port: 80
+      name: http
+      protocol: TCP 
+      targetPort: http
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: example-app
+  annotations:
+    kubernetes.io/ingress.class: addon-http-application-routing
+spec:
+  rules:
+    - host: app.${AZURE_URL}
+      http:
+        paths:
+          - backend:
+              serviceName: spring-redis
+              servicePort: 80
+            path: /
